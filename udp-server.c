@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
 	socklen_t server_len;
 	struct sockaddr_in server_addr;
 	struct sigaction sa;
-	pthread_t tid[20];
+	pthread_t tid[NR_FWD_THR];
 	pthread_attr_t attr;
 
 	memset(&server_addr, 0, sizeof(server_addr));
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	pkt_q.count = pkt_q.rear = pkt_q.front = 0;
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < NR_FWD_THR; i++) {
 		char thread_name[NAMELEN];
 
 		pthread_create(&tid[i], &attr, pkt_fwder, NULL);
