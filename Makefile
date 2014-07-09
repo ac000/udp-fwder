@@ -5,3 +5,6 @@ LIBS=-lcurl -pthread -lrt
 
 udp-fwder: udp-server.c
 	 $(CC) $(CFLAGS) $(LDFLAGS) -o udp-server udp-server.c ${LIBS}
+
+clean:
+	rm -f udp-server
