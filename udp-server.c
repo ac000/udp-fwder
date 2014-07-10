@@ -35,8 +35,8 @@ struct pkt_queue {
 static unsigned long nr_pkts;
 static ssize_t nr_bytes;
 static struct pkt_queue pkt_q;
-pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 static void terminate(int signo)
 {
