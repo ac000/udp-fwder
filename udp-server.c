@@ -36,6 +36,7 @@ static unsigned long nr_pkts;
 static ssize_t nr_bytes;
 static struct pkt_queue pkt_q;
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 static void terminate(int signo)
 {
@@ -54,11 +55,9 @@ static void *pkt_fwder(void *arg)
 		int ret;
 
 		pthread_mutex_lock(&mtx);
-		if (pkt_q.count <= 0) {
-			pthread_mutex_unlock(&mtx);
-			usleep(100000);
-			continue;
-		}
+		while (pkt_q.count <= 0)
+			pthread_cond_wait(&cond, &mtx);
+
 		if (pkt_q.front == QUEUE_SZ)
 			pkt_q.front = 0;
 		snprintf(url, sizeof(url), FWD_URL, pkt_q.pkts[pkt_q.front]);
@@ -98,6 +97,7 @@ static void receiver(int sockfd)
 		snprintf(pkt_q.pkts[pkt_q.rear++], PKT_SIZE, "%s", buf);
 		pkt_q.count++;
 		pthread_mutex_unlock(&mtx);
+		pthread_cond_broadcast(&cond);
 	}
 }
 
