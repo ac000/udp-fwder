@@ -105,11 +105,14 @@ int main(int argc, char *argv[])
 {
 	int i;
 	int sockfd;
+	int ret;
+	socklen_t optlen = sizeof(i);
 	socklen_t server_len;
 	struct sockaddr_in server_addr;
 	struct sigaction sa;
 	pthread_t tid[NR_FWD_THR];
 	pthread_attr_t attr;
+	FILE *fp;
 
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
@@ -119,7 +122,33 @@ int main(int argc, char *argv[])
 
 	sockfd = socket(server_addr.sin_family, SOCK_DGRAM, 0);
 	i = 1;
-	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &i, sizeof(i));
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &i, optlen);
+	/*
+	 * Attempt to increase the receive socket buffer size. We try to
+	 * set it to the value in /proc/sys/net/core/rmem_max. To go
+	 * above that would require the SO_RCVBUFFORCE option with
+	 * CAP_NET_ADMIM. If we can't read from
+	 * /proc/sys/net/core/rmem_max or it's larger than 1MB then we
+	 * set the buffer to a max of 1MB.
+	 *
+	 * NOTE: /proc/sys/net/core/rmem_default is roughly double
+	 * what the actual buffer limit is as the kernel doubles it
+	 * (for TCP) to give it headroom for bookkeeping etc.
+	 * AFAICT /proc/sys/net/core/rmem_max does not include this
+	 * doubling.
+	 */
+	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &i, &optlen);
+	printf("Current RCVBUF : %d\n", i / 2);
+	fp = fopen("/proc/sys/net/core/rmem_max", "r");
+	ret = fscanf(fp, "%d", &i);
+	/* Clamp it to a sane limit (1MB) */
+	if (ret == 0 || i > 1024 * 1024)
+		i = 1024 * 1024;
+	fclose(fp);
+	printf("Setting RCVBUF : %d\n", i);
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &i, optlen);
+	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &i, &optlen);
+	printf("Current RCVBUF : %d\n", i / 2);
 	bind(sockfd, (struct sockaddr *)&server_addr, server_len);
 
 	/* Handle Ctrl-C to terminate and print some stats */
