@@ -101,17 +101,14 @@ static void receiver(int sockfd)
 	}
 }
 
-int main(int argc, char *argv[])
+static int bind_socket(void)
 {
-	int i;
+	int optval;
 	int sockfd;
 	int ret;
-	socklen_t optlen = sizeof(i);
+	socklen_t optlen = sizeof(optval);
 	socklen_t server_len;
 	struct sockaddr_in server_addr;
-	struct sigaction sa;
-	pthread_t tid[NR_FWD_THR];
-	pthread_attr_t attr;
 	FILE *fp;
 
 	memset(&server_addr, 0, sizeof(server_addr));
@@ -121,8 +118,8 @@ int main(int argc, char *argv[])
 	server_len = sizeof(server_addr);
 
 	sockfd = socket(server_addr.sin_family, SOCK_DGRAM, 0);
-	i = 1;
-	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &i, optlen);
+	optval = 1;
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen);
 	/*
 	 * Attempt to increase the receive socket buffer size. We try to
 	 * set it to the value in /proc/sys/net/core/rmem_max. To go
@@ -137,19 +134,32 @@ int main(int argc, char *argv[])
 	 * AFAICT /proc/sys/net/core/rmem_max does not include this
 	 * doubling.
 	 */
-	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &i, &optlen);
-	printf("Current RCVBUF : %d\n", i / 2);
+	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
+	printf("Current RCVBUF : %d\n", optval / 2);
 	fp = fopen("/proc/sys/net/core/rmem_max", "r");
-	ret = fscanf(fp, "%d", &i);
+	ret = fscanf(fp, "%d", &optval);
 	/* Clamp it to a sane limit (1MB) */
-	if (ret == 0 || i > 1024 * 1024)
-		i = 1024 * 1024;
+	if (ret == 0 || optval > 1024 * 1024)
+		optval = 1024 * 1024;
 	fclose(fp);
-	printf("Setting RCVBUF : %d\n", i);
-	setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &i, optlen);
-	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &i, &optlen);
-	printf("Current RCVBUF : %d\n", i / 2);
+	printf("Setting RCVBUF : %d\n", optval);
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, optlen);
+	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
+	printf("Current RCVBUF : %d\n", optval / 2);
 	bind(sockfd, (struct sockaddr *)&server_addr, server_len);
+
+	return sockfd;
+}
+
+int main(int argc, char *argv[])
+{
+	int i;
+	int sockfd;
+	struct sigaction sa;
+	pthread_t tid[NR_FWD_THR];
+	pthread_attr_t attr;
+
+	sockfd = bind_socket();
 
 	/* Handle Ctrl-C to terminate and print some stats */
 	sigemptyset(&sa.sa_mask);
