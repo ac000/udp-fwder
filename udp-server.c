@@ -15,8 +15,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <poll.h>
 #include <pthread.h>
 
 #include <curl/curl.h>
@@ -76,50 +79,71 @@ static void *pkt_fwder(void *arg)
 	pthread_exit(NULL);
 }
 
-static void receiver(int sockfd)
+static void receiver(struct pollfd socks[])
 {
-	char buf[PKT_SIZE];
-	struct sockaddr src;
-	socklen_t srclen = sizeof(src);
-
 	for ( ; ; ) {
-		ssize_t bytes_read = recvfrom(sockfd, &buf, PKT_SIZE, 0,
-				(struct sockaddr *)&src, &srclen);
-		nr_bytes += bytes_read;
-		nr_pkts++;
-		buf[bytes_read] = '\0';
+		int ret;
+		int i;
 
-		pthread_mutex_lock(&mtx);
-		if (pkt_q.count == QUEUE_SZ)
-			printf("Queue overflow...\n");
-		if (pkt_q.rear == QUEUE_SZ)
-			pkt_q.rear = 0;
-		snprintf(pkt_q.pkts[pkt_q.rear++], PKT_SIZE, "%s", buf);
-		pkt_q.count++;
-		pthread_mutex_unlock(&mtx);
-		pthread_cond_broadcast(&cond);
+		ret = poll(socks, 2, -1);
+		if (ret < 1)
+			continue;
+		for (i = 0; i < 2; i++) {
+			ssize_t bytes_read;
+			char buf[PKT_SIZE];
+			struct sockaddr_storage src;
+			socklen_t srclen = sizeof(src);
+
+			if (!(socks[i].revents & POLLIN))
+				continue;
+
+			bytes_read = recvfrom(socks[i].fd, &buf, PKT_SIZE, 0,
+					(struct sockaddr *)&src, &srclen);
+			nr_bytes += bytes_read;
+			nr_pkts++;
+			buf[bytes_read] = '\0';
+
+			pthread_mutex_lock(&mtx);
+			if (pkt_q.count == QUEUE_SZ)
+				printf("Queue overflow...\n");
+			if (pkt_q.rear == QUEUE_SZ)
+				pkt_q.rear = 0;
+			snprintf(pkt_q.pkts[pkt_q.rear++], PKT_SIZE, "%s", buf);
+			pkt_q.count++;
+			pthread_mutex_unlock(&mtx);
+			pthread_cond_broadcast(&cond);
+		}
 	}
 }
 
-static int bind_socket(void)
+static int bind_socket(const char *addr, sa_family_t family)
 {
 	int optval;
 	int sockfd;
 	int ret;
+	struct addrinfo hints;
+	struct addrinfo *res;
 	socklen_t optlen = sizeof(optval);
-	socklen_t server_len;
-	struct sockaddr_in server_addr;
+	char port[6];	/* 0..65535 + '\0' */
+	char baddr[INET6_ADDRSTRLEN];
+	const char *ap_fmt;
 	FILE *fp;
 
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
-	server_addr.sin_port = htons(SERVER_PORT);
-	server_len = sizeof(server_addr);
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = family;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE;
+	hints.ai_protocol = 0;
+	snprintf(port, sizeof(port), "%d", SERVER_PORT);
+	getaddrinfo(addr, port, &hints, &res);
 
-	sockfd = socket(server_addr.sin_family, SOCK_DGRAM, 0);
+	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (sockfd == -1)
+		goto out;
 	optval = 1;
 	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen);
+	if (family == AF_INET6)
+		setsockopt(sockfd, SOL_IPV6, IPV6_V6ONLY, &optval, optlen);
 	/*
 	 * Attempt to increase the receive socket buffer size. We try to
 	 * set it to the value in /proc/sys/net/core/rmem_max. To go
@@ -146,20 +170,49 @@ static int bind_socket(void)
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, optlen);
 	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
 	printf("Current RCVBUF : %d\n", optval / 2);
-	bind(sockfd, (struct sockaddr *)&server_addr, server_len);
 
+	bind(sockfd, res->ai_addr, res->ai_addrlen);
+	getnameinfo(res->ai_addr, sizeof(struct sockaddr_storage), baddr,
+			INET6_ADDRSTRLEN, NULL, 0, NI_NUMERICHOST);
+	if (family == AF_INET)
+		ap_fmt = "%s:%s\n";
+	else
+		ap_fmt = "[%s]:%s\n";
+	printf("udp-server: bound to ");
+	printf(ap_fmt, baddr, port);
+
+out:
+	freeaddrinfo(res);
 	return sockfd;
 }
 
 int main(int argc, char *argv[])
 {
-	int i;
-	int sockfd;
+	int i = 0;
 	struct sigaction sa;
+	struct pollfd socks[2];
 	pthread_t tid[NR_FWD_THR];
 	pthread_attr_t attr;
+	char *server_ip;
 
-	sockfd = bind_socket();
+	memset(&socks, -1, sizeof(socks));
+	if (SERVER_IP4[0] != '-') {
+		if (strlen(SERVER_IP4) == 0)
+			server_ip = NULL;
+		else
+			server_ip = SERVER_IP4;
+		socks[i].fd = bind_socket(server_ip, AF_INET);
+		socks[i].events = POLLIN;
+		i++;
+	}
+	if (SERVER_IP6[0] != '-') {
+		if (strlen(SERVER_IP6) == 0)
+			server_ip = NULL;
+		else
+			server_ip = SERVER_IP6;
+		socks[i].fd = bind_socket(server_ip, AF_INET6);
+		socks[i].events = POLLIN;
+	}
 
 	/* Handle Ctrl-C to terminate and print some stats */
 	sigemptyset(&sa.sa_mask);
@@ -180,7 +233,7 @@ int main(int argc, char *argv[])
 	pthread_attr_destroy(&attr);
 
 	printf("Press Ctrl-C to terminate\n");
-	receiver(sockfd);
+	receiver(socks);
 
 	exit(EXIT_SUCCESS);
 }
