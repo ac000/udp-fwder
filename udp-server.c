@@ -120,7 +120,6 @@ static int bind_socket(const char *addr, sa_family_t family)
 {
 	int optval;
 	int sockfd;
-	int ret;
 	struct addrinfo hints;
 	struct addrinfo *res;
 	socklen_t optlen = sizeof(optval);
@@ -161,11 +160,17 @@ static int bind_socket(const char *addr, sa_family_t family)
 	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
 	printf("Current RCVBUF : %d\n", optval / 2);
 	fp = fopen("/proc/sys/net/core/rmem_max", "r");
-	ret = fscanf(fp, "%d", &optval);
 	/* Clamp it to a sane limit (1MB) */
-	if (ret == 0 || optval > 1024 * 1024)
-		optval = 1024 * 1024;
-	fclose(fp);
+	optval = 1024 * 1024;
+	if (fp) {
+		int ret;
+		int buf;
+
+		ret = fscanf(fp, "%d", &buf);
+		if (ret > 0 && buf < 1024 * 1024)
+			optval = buf;
+		fclose(fp);
+	}
 	printf("Setting RCVBUF : %d\n", optval);
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, optlen);
 	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
