@@ -148,7 +148,7 @@ static int bind_socket(const char *addr, sa_family_t family)
 	 * Attempt to increase the receive socket buffer size. We try to
 	 * set it to the value in /proc/sys/net/core/rmem_max. To go
 	 * above that would require the SO_RCVBUFFORCE option with
-	 * CAP_NET_ADMIM. If we can't read from
+	 * CAP_NET_ADMIN. If we can't read from
 	 * /proc/sys/net/core/rmem_max or it's larger than 1MB then we
 	 * set the buffer to a max of 1MB.
 	 *
