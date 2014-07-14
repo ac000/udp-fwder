@@ -119,6 +119,7 @@ static void receiver(struct pollfd socks[])
 static int bind_socket(const char *addr, sa_family_t family)
 {
 	int optval;
+	int buf;
 	int sockfd;
 	struct addrinfo hints;
 	struct addrinfo *res;
@@ -157,24 +158,23 @@ static int bind_socket(const char *addr, sa_family_t family)
 	 * AFAICT /proc/sys/net/core/rmem_max does not include this
 	 * doubling.
 	 */
-	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
-	printf("Current RCVBUF : %d\n", optval / 2);
 	fp = fopen("/proc/sys/net/core/rmem_max", "r");
 	/* Clamp it to a sane limit (1MB) */
 	optval = 1024 * 1024;
 	if (fp) {
 		int ret;
-		int buf;
 
 		ret = fscanf(fp, "%d", &buf);
 		if (ret > 0 && buf < 1024 * 1024)
 			optval = buf;
 		fclose(fp);
 	}
-	printf("Setting RCVBUF : %d\n", optval);
+	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &buf, &optlen);
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, optlen);
 	getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
-	printf("Current RCVBUF : %d\n", optval / 2);
+	if (optval > buf)
+		printf("udp-server: increased receive socket buffer size: "
+				"%d -> %d\n", buf / 2, optval / 2);
 
 	bind(sockfd, res->ai_addr, res->ai_addrlen);
 	getnameinfo(res->ai_addr, sizeof(struct sockaddr_storage), baddr,
