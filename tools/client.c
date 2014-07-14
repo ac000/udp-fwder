@@ -39,24 +39,39 @@ int main(int argc, char *argv[])
 	int i;
 	int j;
 	int sockfd;
-	socklen_t server_len;
-	struct sockaddr_in server_addr;
+	sa_family_t family;
+	socklen_t addr_len;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	struct sockaddr_storage *addr;
 	struct timespec stp;
 	struct timespec etp;
 
-	memset(&server_addr, 0, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
-	server_addr.sin_port = htons(SERVER_PORT);
-	server_len = sizeof(server_addr);
+	if (!strchr(SERVER_IP, ':')) {
+		memset(&addr4, 0, sizeof(addr4));
+		addr4.sin_family = family = AF_INET;
+		inet_pton(AF_INET, SERVER_IP, &addr4.sin_addr);
+		addr4.sin_port = htons(SERVER_PORT);
 
-	sockfd = socket(server_addr.sin_family, SOCK_DGRAM, 0);
+		addr = (struct sockaddr_storage *)&addr4;
+		addr_len =  sizeof(addr4);
+	} else {
+		memset(&addr6, 0, sizeof(addr6));
+		addr6.sin6_family = family = AF_INET6;
+		inet_pton(AF_INET6, SERVER_IP, &addr6.sin6_addr);
+		addr6.sin6_port = htons(SERVER_PORT);
+
+		addr = (struct sockaddr_storage *)&addr6;
+		addr_len =  sizeof(addr6);
+	}
+
+	sockfd = socket(family, SOCK_DGRAM, 0);
 
 	clock_gettime(CLOCK_MONOTONIC, &stp);
 	for (j = 0; j < NR_ITER; j++) {
 		for (i = 0; i < NR_PKTS; i++) {
 			sendto(sockfd, MSG, strlen(MSG), 0,
-				(struct sockaddr *)&server_addr, server_len);
+					(struct sockaddr *)addr, addr_len);
 			usleep(30);
 		}
 	}
