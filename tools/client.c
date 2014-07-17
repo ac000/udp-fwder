@@ -18,15 +18,15 @@
 #include <arpa/inet.h>
 #include <time.h>
 
-#define SERVER_IP	"127.0.0.1"
-#define SERVER_PORT	3232
-
 #define NS_SEC		1000000000
 #define NS_MSEC		1000000
 #define NS_USEC		1000
 
-#define NR_PKTS		10000
-#define NR_ITER		10
+#define SERVER_IP	server_ip
+#define SERVER_PORT	server_port
+
+#define NR_PKTS		nr_pkts
+#define NR_ITER		nr_iter
 
 #define MSG		"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
 //			"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
@@ -34,10 +34,22 @@
 //			"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
 //			"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
 
+static const char *server_ip;
+static int server_port;
+static int nr_pkts;
+static int nr_iter;
+
+static void disp_usage(void)
+{
+	printf("Usage: client -s <server IP> -p <server port> -n <nr packets>\n"		"              -i <nr iterations>\n");
+	exit(EXIT_FAILURE);
+}
+
 int main(int argc, char *argv[])
 {
 	int i;
 	int j;
+	int opt;
 	int sockfd;
 	sa_family_t family;
 	socklen_t addr_len;
@@ -46,6 +58,27 @@ int main(int argc, char *argv[])
 	struct sockaddr_storage *addr;
 	struct timespec stp;
 	struct timespec etp;
+
+	while ((opt = getopt(argc, argv, "s:p:n:i:")) != -1) {
+		switch (opt) {
+		case 's':
+			server_ip = optarg;
+			break;
+		case 'p':
+			server_port = atoi(optarg);
+			break;
+		case 'n':
+			nr_pkts = atoi(optarg);
+			break;
+		case 'i':
+			nr_iter = atoi(optarg);
+			break;
+		default:
+			disp_usage();
+		}
+	}
+	if (optind < 9)
+		disp_usage();
 
 	if (!strchr(SERVER_IP, ':')) {
 		memset(&addr4, 0, sizeof(addr4));
