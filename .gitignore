@@ -1,4 +1,5 @@
 *.swp
 config.h
 udp-server
+tools/*.o
 tools/client

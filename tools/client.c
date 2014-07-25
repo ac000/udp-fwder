@@ -18,9 +18,7 @@
 #include <arpa/inet.h>
 #include <time.h>
 
-#define NS_SEC		1000000000
-#define NS_MSEC		1000000
-#define NS_USEC		1000
+#include "../include/nsleep.h"
 
 #define SERVER_IP	server_ip
 #define SERVER_PORT	server_port
@@ -105,7 +103,7 @@ int main(int argc, char *argv[])
 		for (i = 0; i < NR_PKTS; i++) {
 			sendto(sockfd, MSG, strlen(MSG), 0,
 					(struct sockaddr *)addr, addr_len);
-			usleep(30);
+			nsleep(NS_USEC * 30);
 		}
 	}
 	clock_gettime(CLOCK_MONOTONIC, &etp);
