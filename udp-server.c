@@ -1,7 +1,7 @@
 /*
  * udp-server.c
  *
- * Copyright (C) 2014		Andrew Clayton <andrew@dnsandmx.com>
+ * Copyright (C) 2014		Andrew Clayton <andrew@zeta.digital-domain.net>
  *
  * Licensed under the MIT license.
  * See MIT-LICENSE.txt
