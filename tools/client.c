@@ -26,16 +26,17 @@
 #define NR_PKTS		nr_pkts
 #define NR_ITER		nr_iter
 
-#define MSG		"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
-//			"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
-//			"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
-//			"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
-//			"+RT:AEOS,3456777777,1,10,1,10,10,10,22,10"
-
 static const char *server_ip;
 static int server_port;
 static int nr_pkts;
 static int nr_iter;
+static unsigned long nr_bytes;
+
+static const char *msgs[] = {
+		"+RT:AEOS,3456777777,1,10,1,10,10,10,22,11",
+		"+RT:AEOS,3456777777,1,10,1,10,10,10,22,20",
+		"+RT:AEOS,3456777777,1,10,1,10,10,10,22,33",
+		"+RT:AEOS,3456777777,1,10,1,10,10,10,22,5" };
 
 static void disp_usage(void)
 {
@@ -100,16 +101,18 @@ int main(int argc, char *argv[])
 
 	clock_gettime(CLOCK_MONOTONIC, &stp);
 	for (j = 0; j < NR_ITER; j++) {
+		srandom(getpid() + j);
 		for (i = 0; i < NR_PKTS; i++) {
-			sendto(sockfd, MSG, strlen(MSG), 0,
+			int n = random() % 4;
+			nr_bytes += sendto(sockfd, msgs[n], strlen(msgs[n]), 0,
 					(struct sockaddr *)addr, addr_len);
 			nsleep(NS_USEC * 30);
 		}
 	}
 	clock_gettime(CLOCK_MONOTONIC, &etp);
 
-	printf("Sent %d, %lu byte packets in %ums\n", NR_PKTS * NR_ITER,
-			strlen(MSG),
+	printf("Sent %d packets containing %lu bytes in %ums\n",
+			NR_PKTS * NR_ITER, nr_bytes,
 			(unsigned int)((etp.tv_sec * 1000 + etp.tv_nsec /
 					NS_MSEC) -
 				(stp.tv_sec * 1000 + stp.tv_nsec / NS_MSEC)));
