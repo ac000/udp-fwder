@@ -108,7 +108,7 @@ static void receiver(struct pollfd socks[])
 				printf("Queue overflow...\n");
 			if (pkt_q.rear == QUEUE_SZ)
 				pkt_q.rear = 0;
-			snprintf(pkt_q.pkts[pkt_q.rear++], PKT_SIZE, "%s", buf);
+			memcpy(pkt_q.pkts[pkt_q.rear++], buf, bytes_read + 1);
 			pkt_q.count++;
 			pthread_mutex_unlock(&mtx);
 			pthread_cond_broadcast(&cond);
