@@ -36,14 +36,14 @@ struct pkt_queue {
 };
 
 static unsigned long nr_pkts;
-static ssize_t nr_bytes;
+static unsigned long nr_bytes;
 static struct pkt_queue pkt_q;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 static void terminate(int signo)
 {
-	printf("Received %lu packets containing %ld bytes.\n", nr_pkts,
+	printf("Received %lu packets containing %lu bytes.\n", nr_pkts,
 			nr_bytes);
 	exit(EXIT_SUCCESS);
 }
