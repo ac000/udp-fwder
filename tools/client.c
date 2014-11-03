@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 	struct timespec stp;
 	struct timespec etp;
 
-	while ((opt = getopt(argc, argv, "s:p:n:i:")) != -1) {
+	while ((opt = getopt(argc, argv, "s:p:n:i:h?")) != -1) {
 		switch (opt) {
 		case 's':
 			server_ip = optarg;
