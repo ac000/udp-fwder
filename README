@@ -39,3 +39,9 @@ will overflow. If this happens the server will display a "Queue overflow..."
 message. This means some packets will have been overwritten in the buffer.
 This bahaviour could be easily changed to say, terminate the server on such
 instances.
+
+
+License
+=======
+
+This is licensed under the MIT license. See MIT-LICENSE.txt
