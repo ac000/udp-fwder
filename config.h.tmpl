@@ -1,0 +1,30 @@
+/*
+ * config.h
+ *
+ * Copyright (C) 2014		Andrew Clayton <andrew@zeta.digital-domain.net>
+ *
+ * Licensed under the MIT license.
+ * See MIT-LICENSE.txt
+ */
+
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
+/* IP address and port this server will run on */
+#define SERVER_PORT		3232
+#define SERVER_IP4		""
+#define SERVER_IP6		""
+
+/* URL where the data is to be sent. '%s' is replaced with the packet data */
+#define FWD_URL			"http://www.example.com/receiver/?packet=%s"
+
+/* Maximum size of the data being sent in a UDP packet including '\0' */
+#define PKT_SIZE		256
+/* How many packets to buffer in the server */
+#define QUEUE_SZ		100000
+/* Note the memory requirements will be PKT_SIZE * QUEUE_SZ + a few MB */
+
+/* How many forwarder threads to run to send the data to the remote server */
+#define NR_FWD_THR		10
+
+#endif /* _CONFIG_H_ */
