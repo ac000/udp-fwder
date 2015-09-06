@@ -1,7 +1,7 @@
 /*
  * udp-server.c
  *
- * Copyright (C) 2014		Andrew Clayton <andrew@zeta.digital-domain.net>
+ * Copyright (C) 2014 - 2015	Andrew Clayton <andrew@zeta.digital-domain.net>
  *
  * Licensed under the MIT license.
  * See MIT-LICENSE.txt
@@ -133,7 +133,6 @@ static int bind_socket(const char *addr, sa_family_t family)
 	hints.ai_family = family;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE;
-	hints.ai_protocol = 0;
 	snprintf(port, sizeof(port), "%d", SERVER_PORT);
 	getaddrinfo(addr, port, &hints, &res);
 
