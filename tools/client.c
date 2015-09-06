@@ -1,7 +1,7 @@
 /*
  * client.c
  *
- * Copyright (C) 2014		Andrew Clayton <andrew@zeta.digital-domain.net>
+ * Copyright (C) 2014 - 2015	Andrew Clayton <andrew@zeta.digital-domain.net>
  *
  * Licensed under the MIT license.
  * See MIT-LICENSE.txt
@@ -15,19 +15,19 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
+#include <netdb.h>
 #include <time.h>
 
 #include "../include/nsleep.h"
 
-#define SERVER_IP	server_ip
+#define SERVER		server
 #define SERVER_PORT	server_port
 
 #define NR_PKTS		nr_pkts
 #define NR_ITER		nr_iter
 
-static const char *server_ip;
-static int server_port;
+static const char *server;
+static const char *server_port;
 static int nr_pkts;
 static int nr_iter;
 static unsigned long nr_bytes;
@@ -40,7 +40,7 @@ static const char *msgs[] = {
 
 static void disp_usage(void)
 {
-	printf("Usage: client -s <server IP> -p <server port> -n <nr packets>\n"		"              -i <nr iterations>\n");
+	printf("Usage: client -s <server> -p <server port> -n <nr packets>\n"		"              -i <nr iterations>\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -50,21 +50,18 @@ int main(int argc, char *argv[])
 	int j;
 	int opt;
 	int sockfd;
-	sa_family_t family;
-	socklen_t addr_len;
-	struct sockaddr_in addr4;
-	struct sockaddr_in6 addr6;
-	struct sockaddr_storage *addr;
+	struct addrinfo hints;
+	struct addrinfo *res;
 	struct timespec stp;
 	struct timespec etp;
 
 	while ((opt = getopt(argc, argv, "s:p:n:i:h?")) != -1) {
 		switch (opt) {
 		case 's':
-			server_ip = optarg;
+			server = optarg;
 			break;
 		case 'p':
-			server_port = atoi(optarg);
+			server_port = optarg;
 			break;
 		case 'n':
 			nr_pkts = atoi(optarg);
@@ -79,25 +76,12 @@ int main(int argc, char *argv[])
 	if (optind < 9)
 		disp_usage();
 
-	if (!strchr(SERVER_IP, ':')) {
-		memset(&addr4, 0, sizeof(addr4));
-		addr4.sin_family = family = AF_INET;
-		inet_pton(AF_INET, SERVER_IP, &addr4.sin_addr);
-		addr4.sin_port = htons(SERVER_PORT);
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+	getaddrinfo(SERVER, SERVER_PORT, &hints, &res);
 
-		addr = (struct sockaddr_storage *)&addr4;
-		addr_len =  sizeof(addr4);
-	} else {
-		memset(&addr6, 0, sizeof(addr6));
-		addr6.sin6_family = family = AF_INET6;
-		inet_pton(AF_INET6, SERVER_IP, &addr6.sin6_addr);
-		addr6.sin6_port = htons(SERVER_PORT);
-
-		addr = (struct sockaddr_storage *)&addr6;
-		addr_len =  sizeof(addr6);
-	}
-
-	sockfd = socket(family, SOCK_DGRAM, 0);
+	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
 	clock_gettime(CLOCK_MONOTONIC, &stp);
 	for (j = 0; j < NR_ITER; j++) {
@@ -105,7 +89,7 @@ int main(int argc, char *argv[])
 		for (i = 0; i < NR_PKTS; i++) {
 			int n = random() % 4;
 			nr_bytes += sendto(sockfd, msgs[n], strlen(msgs[n]), 0,
-					(struct sockaddr *)addr, addr_len);
+					res->ai_addr, res->ai_addrlen);
 			nsleep(NS_USEC * 30);
 		}
 	}
@@ -116,5 +100,7 @@ int main(int argc, char *argv[])
 			(unsigned int)((etp.tv_sec * 1000 + etp.tv_nsec /
 					NS_MSEC) -
 				(stp.tv_sec * 1000 + stp.tv_nsec / NS_MSEC)));
+	freeaddrinfo(res);
+
 	exit(EXIT_SUCCESS);
 }
