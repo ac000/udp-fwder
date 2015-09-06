@@ -1,7 +1,7 @@
 /*
  * config.h
  *
- * Copyright (C) 2014		Andrew Clayton <andrew@zeta.digital-domain.net>
+ * Copyright (C) 2014 - 2015	Andrew Clayton <andrew@zeta.digital-domain.net>
  *
  * Licensed under the MIT license.
  * See MIT-LICENSE.txt
@@ -10,7 +10,11 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-/* IP address and port this server will run on */
+/*
+ * IP address(es) and port this server will run on.
+ * For the IP addresses, an empty entry means the unspecified address,
+ * a - means skip this address family.
+ */
 #define SERVER_PORT		3232
 #define SERVER_IP4		""
 #define SERVER_IP6		""
