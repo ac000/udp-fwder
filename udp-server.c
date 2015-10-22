@@ -108,8 +108,8 @@ static void receiver(struct pollfd socks[])
 				pkt_q.rear = 0;
 			memcpy(pkt_q.pkts[pkt_q.rear++], buf, bytes_read + 1);
 			pkt_q.count++;
-			pthread_mutex_unlock(&mtx);
 			pthread_cond_broadcast(&cond);
+			pthread_mutex_unlock(&mtx);
 		}
 	}
 }
