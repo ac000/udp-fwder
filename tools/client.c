@@ -7,7 +7,8 @@
  * See MIT-LICENSE.txt
  */
 
-#define _XOPEN_SOURCE 500
+#define _POSIX_C_SOURCE	201112L		/* getaddrinfo(3), freeaddrinfo(3) */
+#define _XOPEN_SOURCE	500		/* random(3), srandom(3) */
 
 #include <stdio.h>
 #include <stdlib.h>
