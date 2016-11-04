@@ -1,7 +1,7 @@
 /*
  * udp-server.c
  *
- * Copyright (C) 2014 - 2015	Andrew Clayton <andrew@zeta.digital-domain.net>
+ * Copyright (C) 2014 - 2016	Andrew Clayton <andrew@zeta.digital-domain.net>
  *
  * Licensed under the MIT license.
  * See MIT-LICENSE.txt
@@ -114,7 +114,7 @@ static void receiver(struct pollfd socks[])
 	}
 }
 
-static int bind_socket(const char *addr, sa_family_t family)
+static int bind_socket(const char *addr)
 {
 	int optval;
 	int buf;
@@ -128,7 +128,7 @@ static int bind_socket(const char *addr, sa_family_t family)
 	FILE *fp;
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = family;
+	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_PASSIVE;
 	snprintf(port, sizeof(port), "%d", SERVER_PORT);
@@ -139,7 +139,7 @@ static int bind_socket(const char *addr, sa_family_t family)
 		goto out;
 	optval = 1;
 	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen);
-	if (family == AF_INET6)
+	if (res->ai_family == AF_INET6)
 		setsockopt(sockfd, SOL_IPV6, IPV6_V6ONLY, &optval, optlen);
 	/*
 	 * Attempt to increase the receive socket buffer size. We try to
@@ -176,7 +176,7 @@ static int bind_socket(const char *addr, sa_family_t family)
 	bind(sockfd, res->ai_addr, res->ai_addrlen);
 	getnameinfo(res->ai_addr, sizeof(struct sockaddr_storage), baddr,
 			INET6_ADDRSTRLEN, NULL, 0, NI_NUMERICHOST);
-	if (family == AF_INET)
+	if (res->ai_family == AF_INET)
 		ap_fmt = "%s:%s\n";
 	else
 		ap_fmt = "[%s]:%s\n";
@@ -200,19 +200,19 @@ int main(int argc, char *argv[])
 	memset(&socks, -1, sizeof(socks));
 	if (SERVER_IP4[0] != '-') {
 		if (strlen(SERVER_IP4) == 0)
-			server_ip = NULL;
+			server_ip = "0.0.0.0";
 		else
 			server_ip = SERVER_IP4;
-		socks[i].fd = bind_socket(server_ip, AF_INET);
+		socks[i].fd = bind_socket(server_ip);
 		socks[i].events = POLLIN;
 		i++;
 	}
 	if (SERVER_IP6[0] != '-') {
 		if (strlen(SERVER_IP6) == 0)
-			server_ip = NULL;
+			server_ip = "::";
 		else
 			server_ip = SERVER_IP6;
-		socks[i].fd = bind_socket(server_ip, AF_INET6);
+		socks[i].fd = bind_socket(server_ip);
 		socks[i].events = POLLIN;
 	}
 
