@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -g -std=c99 -O2
+CFLAGS=-Wall -g -std=c99 -pedantic -O2
 LDFLAGS=
 LIBS=-lrt
 
