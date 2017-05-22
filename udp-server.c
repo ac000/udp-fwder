@@ -140,7 +140,7 @@ static int bind_socket(const char *addr)
 	optval = 1;
 	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen);
 	if (res->ai_family == AF_INET6)
-		setsockopt(sockfd, SOL_IPV6, IPV6_V6ONLY, &optval, optlen);
+		setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &optval, optlen);
 	/*
 	 * Attempt to increase the receive socket buffer size. We try to
 	 * set it to the value in /proc/sys/net/core/rmem_max. To go
