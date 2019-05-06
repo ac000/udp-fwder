@@ -1,7 +1,8 @@
 /*
  * udp-server.c
  *
- * Copyright (C) 2014 - 2016	Andrew Clayton <andrew@zeta.digital-domain.net>
+ * Copyright (C) 2014 - 2016, 2019	Andrew Clayton
+ * 					<andrew@zeta.digital-domain.net>
  *
  * Licensed under the MIT license.
  * See MIT-LICENSE.txt
@@ -39,14 +40,14 @@ static struct pkt_queue pkt_q;
 static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
-static void terminate(int signo)
+static void terminate(int signo __attribute__((unused)))
 {
 	printf("Received %lu packets containing %lu bytes.\n", nr_pkts,
 			nr_bytes);
 	exit(EXIT_SUCCESS);
 }
 
-static void *pkt_fwder(void *arg)
+static void *pkt_fwder(void *arg __attribute__((unused)))
 {
 	CURL *curl;
 
@@ -188,7 +189,7 @@ out:
 	return sockfd;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	int i = 0;
 	struct sigaction sa;
